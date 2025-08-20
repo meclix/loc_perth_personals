@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import scraperwiki
 import time
 
-BASE_URL = "https://www.locanto.com/your-city/search/?cat=0&pr=0-1000&p={page}"
+BASE_URL = "https://www.locanto.com.au/perth/Women-Looking-for-Men/20702/?sort=date&dist=50&page={page}"
 
 def scrape_page(page):
     url = BASE_URL.format(page=page)
