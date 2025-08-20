@@ -1,24 +1,43 @@
-# This is a template for a Python scraper on morph.io (https://morph.io)
-# including some code snippets below that you should find helpful
+import requests
+from bs4 import BeautifulSoup
+import scraperwiki
+import time
 
-# import scraperwiki
-# import lxml.html
-#
-# # Read in a page
-# html = scraperwiki.scrape("http://foo.com")
-#
-# # Find something on the page using css selectors
-# root = lxml.html.fromstring(html)
-# root.cssselect("div[align='left']")
-#
-# # Write out to the sqlite database using scraperwiki library
-# scraperwiki.sqlite.save(unique_keys=['name'], data={"name": "susan", "occupation": "software developer"})
-#
-# # An arbitrary query against the database
-# scraperwiki.sql.select("* from data where 'name'='peter'")
+BASE_URL = "https://www.locanto.com/your-city/search/?cat=0&pr=0-1000&p={page}"
 
-# You don't have to do things with the ScraperWiki and lxml libraries.
-# You can use whatever libraries you want: https://morph.io/documentation/python
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
+def scrape_page(page):
+    url = BASE_URL.format(page=page)
+    resp = requests.get(url, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; MorphIOScraper/1.0)"
+    })
+    resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    listings = soup.select("div.listing")
+
+    for item in listings:
+        ad_id = item.get("data-listing-id")
+        title_el = item.select_one("h2.title")
+        price_el = item.select_one("div.price")
+        link_el = item.select_one("a[href*='/ad/']")
+        location_el = item.select_one("div.location")
+        date_el = item.select_one("div.date")
+
+        record = {
+            "id": ad_id,
+            "title": title_el.text.strip() if title_el else None,
+            "price": price_el.text.strip() if price_el else None,
+            "url": link_el["href"] if link_el else None,
+            "location": location_el.text.strip() if location_el else None,
+            "date_posted": date_el.text.strip() if date_el else None,
+        }
+
+        scraperwiki.sqlite.save(unique_keys=["id"], data=record)
+
+def main():
+    for page in range(1, 6):  # adjust max pages as needed
+        scrape_page(page)
+        time.sleep(2)  # polite delay
+
+if __name__ == "__main__":
+    main()
